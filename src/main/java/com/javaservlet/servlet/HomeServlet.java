@@ -1,12 +1,19 @@
 package com.javaservlet.servlet;
 
+import com.google.gson.Gson;
+import com.javaservlet.entity.User; // Đổi lại package Entity cho đúng với code của anh
+import com.javaservlet.service.UserService;
+
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @WebServlet(urlPatterns = {"/", "/login", "/home"})
 public class HomeServlet extends HttpServlet {
@@ -17,10 +24,28 @@ public class HomeServlet extends HttpServlet {
         String path = req.getServletPath();
 
         if (path.equals("/home")) {
-            // Hiển thị trang Home
+            // 1. Lấy dữ liệu từ DB
+            UserService userService = new UserService();
+            List<User> listUser = userService.getAllUsers();
+            // 2. Chuyển dữ liệu sang dạng an toàn (Tránh lỗi Proxy của Hibernate)
+            List<Map<String, Object>> safeUsers = new ArrayList<>();
+            for (User u : listUser) {
+                Map<String, Object> map = new HashMap<>();
+                map.put("userId", u.getUserId());
+                map.put("hoVaTen", u.getHoVaTen());
+                map.put("phoneNumber", u.getPhoneNumber());
+                // Lấy tên Role, nếu Role null thì để N/A tránh lỗi NullPointerException
+                map.put("roleName", u.getRole() != null ? u.getRole().getRoleName() : "N/A");
+                map.put("isActive", u.getActive());
+                safeUsers.add(map);
+            }
+            // 3. Dùng Gson biến List Map thành chuỗi JSON
+            Gson gson = new Gson();
+            String usersJson = gson.toJson(safeUsers);
+            // 4. Đẩy chuỗi JSON sạch sẽ này sang JSP
+            req.setAttribute("usersJson", usersJson);
             req.getRequestDispatcher("/views/home.jsp").forward(req, resp);
         } else {
-            // Mặc định cho / và /login -> Hiển thị trang Login
             req.getRequestDispatcher("/views/login.jsp").forward(req, resp);
         }
     }
@@ -31,27 +56,19 @@ public class HomeServlet extends HttpServlet {
         String path = req.getServletPath();
 
         if (path.equals("/login")) {
-            // 1. Lấy dữ liệu từ form submit (Username/Password)
-            String username = req.getParameter("username");
-            String password = req.getParameter("password");
+            String u = req.getParameter("username");
+            String p = req.getParameter("password");
 
-            // 2. Yêu cầu của anh: System.out.println
-            System.out.println("---[ Login API Request ]---");
-            System.out.println("Username: " + username);
-            System.out.println("Password: " + password);
-            System.out.println("---------------------------");
+            System.out.println("====================================");
+            System.out.println("LOG LOGIN: " + u + " / " + p);
+            System.out.println("====================================");
 
-            // 3. Tạm thời giả lập đăng nhập thành công (Sau này sẽ gọi DB)
-            if (username != null && !username.isEmpty()) {
-                // Tạo session để đánh dấu đã đăng nhập
-                HttpSession session = req.getSession();
-                session.setAttribute("userLogged", username);
-
-                // 4. Yêu cầu của anh: Hiển thị trang home
-                resp.sendRedirect("home");
+            if (u != null && !u.isEmpty()) {
+                req.getSession().setAttribute("userLogged", u);
+                // Redirect về đúng context path để không bị lỗi URL
+                resp.sendRedirect(req.getContextPath() + "/home");
             } else {
-                // Đăng nhập thất bại, quay về login
-                resp.sendRedirect("login?error=true");
+                resp.sendRedirect(req.getContextPath() + "/login?error=1");
             }
         }
     }
