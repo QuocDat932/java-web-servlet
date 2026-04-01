@@ -18,7 +18,13 @@
         <h2>Danh sách nhân sự hệ thống</h2>
         <a href="login" class="btn btn-sm btn-outline-danger">Đăng xuất</a>
     </div>
-
+    <div>
+        <form action="finding" method="post">
+            <label>Tên vai trò:  </label>
+            <input type="text" name="pRoleName"/>
+            <button>tìm kiếm</button>
+        </form>
+    </div>
     <table class="table table-bordered table-hover bg-white shadow-sm">
         <thead class="table-dark">
         <tr>
